@@ -1,0 +1,12 @@
+#!/bin/sh
+
+test $# -ne 2 && {
+	echo "usage: ${0##*/} binary path" >&2
+	exit 1
+}
+asm_opcodes=`asm-opcodes "$1"|tail -n1|sed 's,\\\,\\\\\\\,g'`
+
+cp "$2" shellcode.c
+sed -i "s,%%SHELLCODE%%,$asm_opcodes," shellcode.c
+cc -fno-stack-protector -zexecstack -W -Wall -o shellcode shellcode.c
+rm -f shellcode.c

@@ -1,0 +1,7 @@
+#!/bin/sh
+
+syscall_path="/usr/include/i386-linux-gnu/asm/unistd_32.h"
+syscall_number=`grep -E "_$1[ \t]+" "$syscall_path"|cut -d' ' -f3`
+
+grep -E "_$1[ \t]+" "$syscall_path"
+printf "0x%x\n" $syscall_number

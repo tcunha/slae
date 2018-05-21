@@ -1,0 +1,29 @@
+all: $(PROG) check shellcode
+
+$(PROG): $(PROG).o
+	$(LD) $(LDFLAGS) -o $@ $<
+
+%.o: %.asm
+	nasm $(NASMFLAGS) -f elf32 -o $@ $^
+
+check: $(PROG)
+	@objdump -dM intel $(PROG)|tail -n+7
+	@asm-opcodes $(PROG)
+
+.PHONY: clean
+clean:
+	-rm -f $(PROG) *.asm *.o *.dot *.png *.raw *.strace
+	-rm -f shellcode
+
+count: $(PROG)
+	@asm-opcodes $(PROG)|head -n1
+
+sctest: $(PROG)
+	@asm-sctest $(PROG)
+
+.PHONY: shellcode
+shellcode: $(PROG)
+	@asm-shellcode $(PROG) ../shellcode.c
+
+strace: $(PROG)
+	@strace -o $(PROG).strace ./shellcode

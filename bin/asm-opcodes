@@ -1,0 +1,17 @@
+#!/bin/sh
+
+test $# -ne 1 && {
+	echo "usage: ${0##*/} file" >&2
+	exit 1
+}
+
+objcopy -O binary "$1" "$1".raw
+hexdump -ve '/1 "%02x\n"' "$1".raw|grep -q 00 && {
+	echo "NUL bytes found!" >&2
+	exit 1
+}
+echo -n "Shellcode size: " 
+hexdump -ve '/1 "%02x\n"' "$1".raw|wc -l
+hexdump -ve '"\\x" 1/1 "%02x"' "$1".raw
+echo
+rm -f "$1".raw

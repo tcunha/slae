@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# Converts the provided positional parameters to hexadecimal and little endian
+# and checks if the number of characters are a multiple of 4. If they aren't,
+# and dealing with a path, the missing number of slashes are added to the
+# provided string.
+#
+# Useful with NASM.
+
+asm_str="$@"
+asm_count=`echo -n $asm_str|wc -m`
+asm_mul="4"
+
+for i in `seq 0 9`; do
+	test $asm_mul -ge $asm_count && break	# Closest multiple found.
+	asm_mul=$((i * 4))
+done
+asm_howmany=$((asm_mul - $asm_count))
+test $asm_howmany -ne 0 && echo "Adding $asm_howmany slashes!"
+asm_seq=`seq 0 $asm_howmany`
+asm_slashes=`printf '%.0s/' $asm_seq`
+
+echo "Original string: $asm_str ($asm_count)"
+asm_str=`echo $asm_str|sed "s,/,$asm_slashes,"`
+echo "Modified string: $asm_str (`echo -n $asm_str|wc -m`)"
+
+echo -n $asm_str|hexdump -e '"%x" "\n"'|sed "s,^,0x,"|tac

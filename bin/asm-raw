@@ -1,0 +1,3 @@
+#!/bin/sh
+
+objcopy -O binary "$1" "$1".raw

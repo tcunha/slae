@@ -1,0 +1,32 @@
+#!/bin/sh
+
+configure_usage()
+{
+	echo "${0##*/} [-h rhost] [-l lport] [-r rhost]" >&2
+	exit 1
+}
+
+while getopts "h:l:r:" ch; do
+	case $ch in
+	h) configure_rhost="$OPTARG";;
+	l) configure_lport="$OPTARG";;
+	r) configure_rport="$OPTARG";;
+	*) configure_usage;;
+	esac
+done
+shift $((OPTIND - 1))
+
+configure_rhost="${configure_rhost-127.1.1.1}"
+configure_rhost=`asm-host $configure_rhost` || exit 1
+configure_lport="${configure_lport-4242}"
+configure_lport=`asm-port $configure_lport` || exit 1
+configure_rport="${configure_rport-4242}"
+configure_rport=`asm-port $configure_rport` || exit 1
+
+echo "Using remote host: $configure_rhost"
+echo "Using listening port: $configure_lport"
+sed "s,PORT,$configure_lport," 0x01-bind/*.asm.in >0x01-bind/bind.asm
+echo "Using remote port: $configure_rport"
+sed -e "s,HOST,$configure_rhost,"		\
+    -e "s,PORT,$configure_rport,"		\
+    0x02-reverse/*.asm.in >0x02-reverse/reverse.asm

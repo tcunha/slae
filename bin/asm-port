@@ -1,0 +1,17 @@
+#!/bin/sh
+
+test $# -ne 1 && {
+	echo "usage: ${0##*/} port" >&2
+	exit 1
+}
+test $1 -le 1024 -o $1 -gt 65535 && {
+	echo "Port should be higher than 1024 and lesser than 65535!" >&2
+	exit 1
+}
+printf "%04x" $1|grep -o ..|grep -q 00 && {
+	echo "Port contains NUL bytes!" >&2
+	exit 1
+}
+
+echo -n 0x
+printf "%04x" $1|grep -o ..|tac|tr -d '\n'

