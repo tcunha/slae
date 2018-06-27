@@ -1,0 +1,9 @@
+#!/bin/sh
+
+test $# -ne 1 && {
+	echo "usage: ${0##*/} file" >&2
+	exit 1
+}
+
+echo -n "Shellcode size: "
+asm-opcodes "$1"|tr '\\' '\n'|grep -v "^$"|wc -l

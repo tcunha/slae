@@ -1,3 +1,5 @@
+CFLAGS=	-W -Wall -fno-stack-protector -zexecstack
+
 all: $(PROG) check shellcode
 
 $(PROG): $(PROG).o
@@ -8,12 +10,16 @@ $(PROG): $(PROG).o
 
 check: $(PROG)
 	@objdump -dM intel $(PROG)|tail -n+7
+	@asm-size $(PROG)
 	@asm-opcodes $(PROG)
 
 .PHONY: clean
 clean:
-	-rm -f $(PROG) *.asm *.o *.dot *.png *.raw *.strace
+	-rm -f $(PROG) *.o *.dot *.png *.strace
 	-rm -f shellcode
+ifneq (,$(wildcard ./$(PROG).asm.in))
+	-rm -f $(PROG).asm
+endif
 
 count: $(PROG)
 	@asm-opcodes $(PROG)|head -n1
@@ -21,9 +27,8 @@ count: $(PROG)
 sctest: $(PROG)
 	@asm-sctest $(PROG)
 
-.PHONY: shellcode
 shellcode: $(PROG)
-	@asm-shellcode $(PROG) ../shellcode.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $(SKELETON)
 
 strace: $(PROG)
 	@strace -o $(PROG).strace ./shellcode

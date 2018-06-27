@@ -1,6 +1,9 @@
 #include <stdio.h>
 
-unsigned char shellcode[] = "%%SHELLCODE%%";
+#define QUOTE(s)	#s
+#define STR(s)		QUOTE(s)
+
+unsigned char shellcode[] = STR(SHELLCODE);
 
 int
 main(void)

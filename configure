@@ -1,6 +1,37 @@
 #!/bin/sh
 
-configure_usage()
+# Configure script that tweaks shellcode per provided user options (for instance
+# defining the host and port). This is a requirement for the exam.
+
+cfg_host()
+{
+	echo -n 0x
+	echo $1|tr . '\n'|tac|while read n; do
+		printf "%02x" $n
+	done
+}
+
+cfg_nuls_host()
+{
+	echo $1|tr . '\n'|grep -q "^0" || return
+	echo "Host contains NUL bytes!" >&2
+	exit 1
+}
+
+cfg_nuls_port()
+{
+	printf "%04x" $1|grep -o ..|grep -q 00 || return
+	echo "Port contains NUL bytes!" >&2
+	exit 1
+}
+
+cfg_port()
+{
+	echo -n 0x
+	printf "%04x" $1|grep -o ..|tac|tr -d '\n'
+}
+
+cfg_usage()
 {
 	echo "${0##*/} [-h rhost] [-l lport] [-r rhost]" >&2
 	exit 1
@@ -8,25 +39,27 @@ configure_usage()
 
 while getopts "h:l:r:" ch; do
 	case $ch in
-	h) configure_rhost="$OPTARG";;
-	l) configure_lport="$OPTARG";;
-	r) configure_rport="$OPTARG";;
-	*) configure_usage;;
+	h) cfg_rhost="$OPTARG";;	# Remote host used by the reverse shell.
+	l) cfg_lport="$OPTARG";;	# Local host used by the bind shell.
+	r) cfg_rport="$OPTARG";;	# Remote port user by the reverse shell.
+	*) cfg_usage;;
 	esac
 done
 shift $((OPTIND - 1))
 
-configure_rhost="${configure_rhost-127.1.1.1}"
-configure_rhost=`asm-host $configure_rhost` || exit 1
-configure_lport="${configure_lport-4242}"
-configure_lport=`asm-port $configure_lport` || exit 1
-configure_rport="${configure_rport-4242}"
-configure_rport=`asm-port $configure_rport` || exit 1
+cfg_lport="${cfg_lport-4242}"		# Default to a local port of 4242/tcp.
+cfg_rhost="${cfg_rhost-127.1.1.1}"	# Default to a remote host of 127.1.1.1.
+cfg_rport="${cfg_rport-4242}"		# Default to a remote port 4242/tcp.
 
-echo "Using remote host: $configure_rhost"
-echo "Using listening port: $configure_lport"
-sed "s,PORT,$configure_lport," 0x01-bind/*.asm.in >0x01-bind/bind.asm
-echo "Using remote port: $configure_rport"
-sed -e "s,HOST,$configure_rhost,"		\
-    -e "s,PORT,$configure_rport,"		\
-    0x02-reverse/*.asm.in >0x02-reverse/reverse.asm
+cfg_nuls_port $cfg_lport || cfg_lport=`cfg_port $cfg_lport`
+cfg_nuls_host $cfg_rhost || cfg_rhost=`cfg_host $cfg_rhost`
+cfg_nuls_port $cfg_rport || cfg_rport=`cfg_port $cfg_rport`
+
+echo "Using listening port: $cfg_lport"
+echo "Using remote host: $cfg_rhost"
+echo "Using remote port: $cfg_rport"
+
+sed -e "s,PORT,$cfg_lport," 0x01-bind/*.in >0x01-bind/bind.asm
+sed -e "s,HOST,$cfg_rhost,"	\
+    -e "s,PORT,$cfg_rport,"	\
+    0x02-reverse/*.in >0x02-reverse/reverse.asm
