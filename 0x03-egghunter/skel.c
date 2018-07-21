@@ -3,13 +3,13 @@
 #define QUOTE(s) 	#s
 #define STR(s)		QUOTE(s)
 
-unsigned char egghunter[] = STR(EGGHUNTER);
-unsigned char shellcode[] = "\xbe\xba\xfe\xca" STR(SHELLCODE);
+unsigned char shellcode[] = STR(SHELLCODE);
+unsigned char stage2[] = "\xbe\xba\xfe\xca" STR(STAGE2);
 
 int
 main(void)
 {
-	printf("Egghunter length: %zu\n", sizeof egghunter - 1);
-	printf("Shellcode length: %zu\n", sizeof shellcode - 1);
-	(*(void(*)(void)) egghunter)();
+	printf("Egghunter length: %zu\n", sizeof shellcode - 1);
+	printf("Second stage length: %zu\n", sizeof stage2 - 5);
+	(*(void(*)(void)) shellcode)();
 }
