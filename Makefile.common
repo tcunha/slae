@@ -1,4 +1,5 @@
-CFLAGS=	-W -Wall -fno-stack-protector -zexecstack
+CFLAGS=		-W -Wall -fno-stack-protector -zexecstack
+LDFLAGS=	-N -zexecstack
 
 all: $(PROG) check shellcode
 

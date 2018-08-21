@@ -1,10 +1,5 @@
 #!/bin/bash
 
-test $# -ne 1 && {
-	echo "usage: ${0##*/} file" >&2
-	exit 1
-}
-
 echo -en "`asm-opcodes "$1"|tail -n1`" >"$1".raw
 sctest -Svvvs100000 -G "$1".dot <"$1".raw
 dot -Tpng -o "$1".png "$1".dot
